@@ -37,14 +37,12 @@ io.on("connection", (socket) => {
         io.emit("updateOnlineUsers", Array.from(onlineUsers));
     });
 
-    // Receber e reenviar mensagens de chat
     socket.on("chatMessage", (data) => {
-        io.emit("chatMessage", data);
+        io.emit("chatMessage", { ...data, senderId: socket.id });
     });
 
-    // Receber e reenviar imagens
     socket.on("sendImage", (data) => {
-        io.emit("receiveImage", data);
+        io.emit("receiveImage", { ...data, senderId: socket.id });
     });
 
     // Notificação de digitação

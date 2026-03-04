@@ -1,189 +1,164 @@
-// Substitua pela URL real do seu servidor no Render
-const SERVER_URL = "https://chat-app-q6u7.onrender.com";
+// ✅ URL correta do seu Render
+const SERVER_URL = "https://chat-online-tafo.onrender.com";
 
-// Conectar ao servidor WebSocket usando a URL absoluta (necessário para o APK)
-const socket = io(SERVER_URL);
+// ✅ Conexão definitiva: polling + websocket (Android-friendly)
+const socket = io(SERVER_URL, {
+  path: "/socket.io",
+  transports: ["polling", "websocket"],
+  upgrade: true,
+  reconnection: true,
+  timeout: 20000
+});
+
+// ✅ ID da minha conexão (para não duplicar a minha própria msg)
+let myId = "";
+socket.on("connect", () => {
+  myId = socket.id;
+  console.log("✅ conectado:", myId);
+});
 
 let username = localStorage.getItem("username") || "";
 
 // Perguntar o nome se ainda não tiver
 if (!username) {
-    username = prompt("Digite seu nome:");
-    if (username) {
-        localStorage.setItem("username", username);
-    }
+  username = prompt("Digite seu nome:");
+  if (username) localStorage.setItem("username", username);
 }
 
 // Enviar o nome do usuário para o servidor
-if (username) {
-    socket.emit("registerUser", username);
-}
+if (username) socket.emit("registerUser", username);
 
 // Captura de elementos
 const messageInput = document.getElementById("message");
 const sendBtn = document.getElementById("send-btn");
 const chatBox = document.getElementById("chat-box");
 const typingIndicator = document.getElementById("typing-indicator");
-
 const imageInput = document.getElementById("imageInput");
 
-// Função para salvar as mensagens no localStorage
 function saveMessages(messages) {
-    localStorage.setItem("messages", JSON.stringify(messages));
+  localStorage.setItem("messages", JSON.stringify(messages));
 }
 
-// Função para carregar as mensagens do localStorage
 function loadMessages() {
-    const savedMessages = localStorage.getItem("messages");
-    return savedMessages ? JSON.parse(savedMessages) : [];
+  const savedMessages = localStorage.getItem("messages");
+  return savedMessages ? JSON.parse(savedMessages) : [];
 }
 
-// Carregar e exibir as mensagens salvas ao carregar a página
 function loadChatHistory() {
-    const messages = loadMessages();
-    messages.forEach((messageData) => {
-        // Se tiver imagem, mostra imagem; senão, mostra texto
-        if (messageData.image) displayImage(messageData, false);
-        else displayMessage(messageData, false);
-    });
+  const messages = loadMessages();
+  chatBox.innerHTML = "";
+  messages.forEach((m) => {
+    if (m.image) displayImage(m, m.senderId === myId);
+    else displayMessage(m, m.senderId === myId);
+  });
 }
 
-// Enviar mensagem de texto
 function sendMessage() {
-    const message = messageInput.value.trim();
+  const message = messageInput.value.trim();
+  if (!message || !username) return;
 
-    if (message && username) {
-        const messageData = { username, message, time: new Date().toLocaleTimeString() };
-        displayMessage(messageData, true);
-        socket.emit("chatMessage", messageData);
+  const messageData = { username, message, time: new Date().toLocaleTimeString() };
 
-        // Salvar a nova mensagem no localStorage
-        const messages = loadMessages();
-        messages.push(messageData);
-        saveMessages(messages);
+  // mostra na tela imediatamente
+  displayMessage({ ...messageData, senderId: myId }, true);
 
-        messageInput.value = "";
-        stopTyping();
-    } else {
-        console.log("⚠️ Mensagem vazia ou usuário sem nome.");
-    }
+  // manda para o servidor
+  socket.emit("chatMessage", messageData);
+
+  // salva localmente
+  const messages = loadMessages();
+  messages.push({ ...messageData, senderId: myId });
+  saveMessages(messages);
+
+  messageInput.value = "";
+  stopTyping();
 }
 
-// Enviar imagem
 function sendImage(event) {
-    const file = event.target.files && event.target.files[0];
-    if (file && username) {
-        const reader = new FileReader();
-        reader.onload = function () {
-            const imageData = { username, image: reader.result, time: new Date().toLocaleTimeString() };
-            displayImage(imageData, true);
+  const file = event.target.files && event.target.files[0];
+  if (!file || !username) return;
 
-            // Salvar a imagem no localStorage
-            const messages = loadMessages();
-            messages.push(imageData);
-            saveMessages(messages);
+  const reader = new FileReader();
+  reader.onload = function () {
+    const imageData = { username, image: reader.result, time: new Date().toLocaleTimeString() };
 
-            socket.emit("sendImage", imageData);
-        };
-        reader.readAsDataURL(file);
-    }
+    displayImage({ ...imageData, senderId: myId }, true);
+    socket.emit("sendImage", imageData);
+
+    const messages = loadMessages();
+    messages.push({ ...imageData, senderId: myId });
+    saveMessages(messages);
+  };
+  reader.readAsDataURL(file);
 }
 
-// Receber mensagens do servidor
+// ✅ RECEBER: NÃO filtra por username. Filtra por senderId (se existir).
 socket.on("chatMessage", (data) => {
-    if (data.username !== username) {
-        displayMessage(data, false);
-    }
+  if (data.senderId && data.senderId === myId) return; // ignora só a minha própria conexão
+  displayMessage(data, false);
+
+  const messages = loadMessages();
+  messages.push(data);
+  saveMessages(messages);
 });
 
-// Receber imagens do servidor
 socket.on("receiveImage", (data) => {
-    if (data.username !== username) {
-        displayImage(data, false);
-    }
+  if (data.senderId && data.senderId === myId) return;
+  displayImage(data, false);
+
+  const messages = loadMessages();
+  messages.push(data);
+  saveMessages(messages);
 });
 
-// Exibir mensagens corretamente
 function displayMessage(data, isSender) {
-    const messageElement = document.createElement("div");
-    messageElement.classList.add("message", isSender ? "sent" : "received");
-    messageElement.innerHTML = `<span class="username">${data.username}</span><p>${data.message}</p><span class="time">${data.time}</span>`;
-
-    chatBox.appendChild(messageElement);
-    chatBox.scrollTop = chatBox.scrollHeight;
+  const messageElement = document.createElement("div");
+  messageElement.classList.add("message", isSender ? "sent" : "received");
+  messageElement.innerHTML = `<span class="username">${data.username}</span><p>${data.message}</p><span class="time">${data.time}</span>`;
+  chatBox.appendChild(messageElement);
+  chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Exibir imagens corretamente
 function displayImage(data, isSender) {
-    const imageElement = document.createElement("div");
-    imageElement.classList.add("message", isSender ? "sent" : "received");
-    imageElement.innerHTML = `<span class="username">${data.username}</span><img src="${data.image}" class="chat-image" /><span class="time">${data.time}</span>`;
-
-    chatBox.appendChild(imageElement);
-    chatBox.scrollTop = chatBox.scrollHeight;
+  const imageElement = document.createElement("div");
+  imageElement.classList.add("message", isSender ? "sent" : "received");
+  imageElement.innerHTML = `<span class="username">${data.username}</span><img src="${data.image}" class="chat-image" /><span class="time">${data.time}</span>`;
+  chatBox.appendChild(imageElement);
+  chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Notificar que o usuário está digitando
 function notifyTyping() {
-    if (username) {
-        socket.emit("typing", username);
-    }
+  if (username) socket.emit("typing", username);
 }
 
-// Parar de mostrar "está digitando..."
 function stopTyping() {
-    socket.emit("stopTyping");
+  socket.emit("stopTyping");
 }
 
-// Receber evento de digitação do servidor
 socket.on("typing", (user) => {
-    if (typingIndicator) {
-        typingIndicator.innerText = `${user} está digitando...`;
-    }
+  if (typingIndicator) typingIndicator.innerText = `${user} está digitando...`;
 });
 
-// Remover "está digitando..." quando o usuário parar
 socket.on("stopTyping", () => {
-    if (typingIndicator) {
-        typingIndicator.innerText = "";
-    }
+  if (typingIndicator) typingIndicator.innerText = "";
 });
 
-// Função para apagar a conversa (usada no menu)
 function clearChat() {
-    localStorage.removeItem("messages");
-    chatBox.innerHTML = "";
+  localStorage.removeItem("messages");
+  chatBox.innerHTML = "";
 }
 
-const clearChatBtn = document.getElementById("clear-chat-btn");
-if (clearChatBtn) {
-    clearChatBtn.addEventListener("click", clearChat);
-}
+sendBtn?.addEventListener("click", sendMessage);
+messageInput?.addEventListener("input", notifyTyping);
+imageInput?.addEventListener("change", sendImage);
 
-// Eventos
-if (sendBtn) {
-    sendBtn.addEventListener("click", sendMessage);
-}
-if (messageInput) {
-    messageInput.addEventListener("input", notifyTyping);
-}
-
-if (imageInput) {
-    imageInput.addEventListener("change", sendImage);
-}
-
-// Carregar o histórico de mensagens
 loadChatHistory();
 
-// Função para alternar a visibilidade do menu
 function toggleMenu() {
-    const menuDropdown = document.getElementById("menu-dropdown");
-    if (menuDropdown) {
-        menuDropdown.classList.toggle("show");
-    }
+  document.getElementById("menu-dropdown")?.classList.toggle("show");
 }
 
 function logout() {
-    localStorage.removeItem("username");
-    location.reload();
+  localStorage.removeItem("username");
+  location.reload();
 }
