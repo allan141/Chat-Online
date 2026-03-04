@@ -4,12 +4,27 @@
     "description": "Chat online em tempo real",
     "main": "server.js",
     "scripts": {
-      "start": "node server.js"
+        "start": "node server.js"
     },
     "dependencies": {
-      "express": "^4.18.2",
-      "socket.io": "^4.7.2"
-    }
-
-  }
-  
+        "@capacitor/android": "^8.1.0",
+        "@capacitor/core": "^8.1.0",
+        "express": "^4.18.2",
+        "socket.io": "^4.7.2"
+    },
+    "devDependencies": {
+        "@capacitor/cli": "^8.1.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/allan141/Chat-Online.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs",
+    "bugs": {
+        "url": "https://github.com/allan141/Chat-Online/issues"
+    },
+    "homepage": "https://github.com/allan141/Chat-Online#readme"
+}

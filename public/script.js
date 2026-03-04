@@ -1,16 +1,23 @@
-// Conectar ao servidor WebSocket hospedado no Render (Opção A)
-const socket = io();
+// Substitua pela URL real do seu servidor no Render
+const SERVER_URL = "https://chat-app-q6u7.onrender.com";
+
+// Conectar ao servidor WebSocket usando a URL absoluta (necessário para o APK)
+const socket = io(SERVER_URL);
 
 let username = localStorage.getItem("username") || "";
 
 // Perguntar o nome se ainda não tiver
 if (!username) {
     username = prompt("Digite seu nome:");
-    localStorage.setItem("username", username);
+    if (username) {
+        localStorage.setItem("username", username);
+    }
 }
 
 // Enviar o nome do usuário para o servidor
-socket.emit("registerUser", username);
+if (username) {
+    socket.emit("registerUser", username);
+}
 
 // Captura de elementos
 const messageInput = document.getElementById("message");
@@ -45,7 +52,7 @@ function loadChatHistory() {
 function sendMessage() {
     const message = messageInput.value.trim();
 
-    if (message) {
+    if (message && username) {
         const messageData = { username, message, time: new Date().toLocaleTimeString() };
         displayMessage(messageData, true);
         socket.emit("chatMessage", messageData);
@@ -58,14 +65,14 @@ function sendMessage() {
         messageInput.value = "";
         stopTyping();
     } else {
-        console.log("⚠️ Mensagem vazia, não enviada.");
+        console.log("⚠️ Mensagem vazia ou usuário sem nome.");
     }
 }
 
 // Enviar imagem
 function sendImage(event) {
     const file = event.target.files && event.target.files[0];
-    if (file) {
+    if (file && username) {
         const reader = new FileReader();
         reader.onload = function () {
             const imageData = { username, image: reader.result, time: new Date().toLocaleTimeString() };
@@ -118,7 +125,9 @@ function displayImage(data, isSender) {
 
 // Notificar que o usuário está digitando
 function notifyTyping() {
-    socket.emit("typing", username);
+    if (username) {
+        socket.emit("typing", username);
+    }
 }
 
 // Parar de mostrar "está digitando..."
@@ -128,12 +137,16 @@ function stopTyping() {
 
 // Receber evento de digitação do servidor
 socket.on("typing", (user) => {
-    typingIndicator.innerText = `${user} está digitando...`;
+    if (typingIndicator) {
+        typingIndicator.innerText = `${user} está digitando...`;
+    }
 });
 
 // Remover "está digitando..." quando o usuário parar
 socket.on("stopTyping", () => {
-    typingIndicator.innerText = "";
+    if (typingIndicator) {
+        typingIndicator.innerText = "";
+    }
 });
 
 // Função para apagar a conversa (usada no menu)
@@ -148,8 +161,12 @@ if (clearChatBtn) {
 }
 
 // Eventos
-sendBtn.addEventListener("click", sendMessage);
-messageInput.addEventListener("input", notifyTyping);
+if (sendBtn) {
+    sendBtn.addEventListener("click", sendMessage);
+}
+if (messageInput) {
+    messageInput.addEventListener("input", notifyTyping);
+}
 
 if (imageInput) {
     imageInput.addEventListener("change", sendImage);
@@ -161,5 +178,12 @@ loadChatHistory();
 // Função para alternar a visibilidade do menu
 function toggleMenu() {
     const menuDropdown = document.getElementById("menu-dropdown");
-    menuDropdown.classList.toggle("show");
+    if (menuDropdown) {
+        menuDropdown.classList.toggle("show");
+    }
+}
+
+function logout() {
+    localStorage.removeItem("username");
+    location.reload();
 }
