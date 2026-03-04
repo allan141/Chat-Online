@@ -1,4 +1,4 @@
-// Conectar ao servidor WebSocket hospedado no Render
+// Conectar ao servidor WebSocket hospedado no Render (Opção A)
 const socket = io();
 
 let username = localStorage.getItem("username") || "";
@@ -17,7 +17,8 @@ const messageInput = document.getElementById("message");
 const sendBtn = document.getElementById("send-btn");
 const chatBox = document.getElementById("chat-box");
 const typingIndicator = document.getElementById("typing-indicator");
-const imageInput = document.getElementById("image-input");
+
+const imageInput = document.getElementById("imageInput");
 
 // Função para salvar as mensagens no localStorage
 function saveMessages(messages) {
@@ -34,24 +35,26 @@ function loadMessages() {
 function loadChatHistory() {
     const messages = loadMessages();
     messages.forEach((messageData) => {
-        displayMessage(messageData, false);
+        // Se tiver imagem, mostra imagem; senão, mostra texto
+        if (messageData.image) displayImage(messageData, false);
+        else displayMessage(messageData, false);
     });
 }
 
 // Enviar mensagem de texto
 function sendMessage() {
     const message = messageInput.value.trim();
-    
+
     if (message) {
         const messageData = { username, message, time: new Date().toLocaleTimeString() };
         displayMessage(messageData, true);
         socket.emit("chatMessage", messageData);
-        
+
         // Salvar a nova mensagem no localStorage
         const messages = loadMessages();
         messages.push(messageData);
         saveMessages(messages);
-        
+
         messageInput.value = "";
         stopTyping();
     } else {
@@ -61,18 +64,18 @@ function sendMessage() {
 
 // Enviar imagem
 function sendImage(event) {
-    const file = event.target.files[0];
+    const file = event.target.files && event.target.files[0];
     if (file) {
         const reader = new FileReader();
         reader.onload = function () {
             const imageData = { username, image: reader.result, time: new Date().toLocaleTimeString() };
             displayImage(imageData, true);
-            
+
             // Salvar a imagem no localStorage
             const messages = loadMessages();
             messages.push(imageData);
             saveMessages(messages);
-            
+
             socket.emit("sendImage", imageData);
         };
         reader.readAsDataURL(file);
@@ -98,7 +101,7 @@ function displayMessage(data, isSender) {
     const messageElement = document.createElement("div");
     messageElement.classList.add("message", isSender ? "sent" : "received");
     messageElement.innerHTML = `<span class="username">${data.username}</span><p>${data.message}</p><span class="time">${data.time}</span>`;
-    
+
     chatBox.appendChild(messageElement);
     chatBox.scrollTop = chatBox.scrollHeight;
 }
@@ -108,7 +111,7 @@ function displayImage(data, isSender) {
     const imageElement = document.createElement("div");
     imageElement.classList.add("message", isSender ? "sent" : "received");
     imageElement.innerHTML = `<span class="username">${data.username}</span><img src="${data.image}" class="chat-image" /><span class="time">${data.time}</span>`;
-    
+
     chatBox.appendChild(imageElement);
     chatBox.scrollTop = chatBox.scrollHeight;
 }
@@ -118,7 +121,7 @@ function notifyTyping() {
     socket.emit("typing", username);
 }
 
-// Parar de mostrar "está digitando..." após um tempo
+// Parar de mostrar "está digitando..."
 function stopTyping() {
     socket.emit("stopTyping");
 }
@@ -133,20 +136,24 @@ socket.on("stopTyping", () => {
     typingIndicator.innerText = "";
 });
 
-// Função para apagar a conversa
+// Função para apagar a conversa (usada no menu)
 function clearChat() {
-    localStorage.removeItem("messages"); // Apagar as mensagens do localStorage
-    chatBox.innerHTML = ""; // Limpar a caixa de chat na interface
+    localStorage.removeItem("messages");
+    chatBox.innerHTML = "";
 }
 
-// Evento para apagar conversa
 const clearChatBtn = document.getElementById("clear-chat-btn");
-clearChatBtn.addEventListener("click", clearChat);
+if (clearChatBtn) {
+    clearChatBtn.addEventListener("click", clearChat);
+}
 
 // Eventos
 sendBtn.addEventListener("click", sendMessage);
 messageInput.addEventListener("input", notifyTyping);
-imageInput.addEventListener("change", sendImage);
+
+if (imageInput) {
+    imageInput.addEventListener("change", sendImage);
+}
 
 // Carregar o histórico de mensagens
 loadChatHistory();
