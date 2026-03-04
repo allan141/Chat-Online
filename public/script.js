@@ -1,5 +1,5 @@
 // Conectar ao servidor WebSocket hospedado no Render
-const socket = io("https://chat-2-0-v3n2.onrender.com");
+const socket = io();
 
 let username = localStorage.getItem("username") || "";
 
