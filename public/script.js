@@ -82,7 +82,7 @@ function loadConversationMessages(userId) {
 }
 
 function getAvatarLetter(name) {
-  return name && name.length ? name.charAt(0).toUpperCase() : "?";
+  return name && typeof name === 'string' && name.length ? name.charAt(0).toUpperCase() : "?";
 }
 
 function ensureConversation(user) {
@@ -182,17 +182,19 @@ function openChat(user) {
   renderChatList(searchInput?.value || "");
 }
 
-// ===== RENDER CONTATOS =====
+// ===== RENDER CONTATOS (CORRIGIDO) =====
 function renderContacts() {
   if (!contactsList) return;
 
   contactsList.innerHTML = "";
 
-  const validContacts = contacts.filter(contact => contact && contact.id);
+  // Filtra apenas contatos válidos que possuem ID e Nome
+  const validContacts = contacts.filter(contact => contact && contact.id && contact.name);
 
+  // Ordenação com verificação de segurança (Linha 184 corrigida)
   const sorted = [...validContacts].sort((a, b) => {
-    const nameA = (a?.name || "").toString();
-    const nameB = (b?.name || "").toString();
+    const nameA = String(a?.name || "");
+    const nameB = String(b?.name || "");
     return nameA.localeCompare(nameB);
   });
 
@@ -200,9 +202,9 @@ function renderContacts() {
     const item = document.createElement("div");
     item.className = "contact-item";
     item.innerHTML = `
-      <div class="contact-item-avatar">${getAvatarLetter(contact.name || "?")}</div>
+      <div class="contact-item-avatar">${getAvatarLetter(contact.name)}</div>
       <div class="contact-item-info">
-        <div class="contact-item-name">${contact.name || "Sem nome"}</div>
+        <div class="contact-item-name">${contact.name}</div>
         <div class="contact-item-status">${contact.status || "offline"}</div>
       </div>
     `;
@@ -214,21 +216,21 @@ function renderContacts() {
   });
 }
 
-// ===== RENDER CONVERSAS =====
+// ===== RENDER CONVERSAS (CORRIGIDO) =====
 function renderChatList(filter = "") {
   if (!chatList) return;
 
   chatList.innerHTML = "";
 
   const filtered = conversations.filter(c =>
-    (c.name || "").toLowerCase().includes(filter.toLowerCase())
+    String(c.name || "").toLowerCase().includes(filter.toLowerCase())
   );
 
   filtered.forEach(chat => {
     const item = document.createElement("div");
     item.className = "chat-item";
     item.innerHTML = `
-      <div class="chat-item-avatar">${getAvatarLetter(chat.name || "?")}</div>
+      <div class="chat-item-avatar">${getAvatarLetter(chat.name)}</div>
       <div class="chat-item-content">
         <div class="chat-item-top">
           <div class="chat-item-name">${chat.name || "Sem nome"}</div>
@@ -423,57 +425,16 @@ socket.on("receiveImage", (data) => {
   renderChatList(searchInput?.value || "");
 });
 
-// ===== FEEDBACK =====
-socket.on("messageDelivered", (data) => {
-  console.log("✅ mensagem entregue:", data);
-});
-
-socket.on("imageDelivered", (data) => {
-  console.log("✅ imagem entregue:", data);
-});
-
-// ===== DIGITANDO =====
-function notifyTyping() {
-  if (!currentChatUser) return;
-
-  socket.emit("typing", {
-    to: currentChatUser.id
-  });
-}
-
-function stopTyping() {
-  if (!currentChatUser) return;
-
-  socket.emit("stopTyping", {
-    to: currentChatUser.id
-  });
-}
-
-socket.on("typing", (data) => {
-  if (!currentChatUser) return;
-  if (data.from !== currentChatUser.id) return;
-
-  if (typingIndicator) {
-    typingIndicator.innerText = `${data.username} está digitando...`;
-  }
-});
-
-socket.on("stopTyping", (data) => {
-  if (!currentChatUser) return;
-  if (data.from !== currentChatUser.id) return;
-
-  clearTypingIndicator();
-});
-
-// ===== ONLINE USERS =====
+// ===== ONLINE USERS (CORRIGIDO) =====
 socket.on("updateOnlineUsers", (users) => {
   onlineUsers = users || [];
 
+  // Filtra apenas usuários que têm nome definido
   contacts = onlineUsers
     .filter(user => user && user.userId !== myUserId && user.username)
     .map(user => ({
       id: user.userId,
-      name: user.username || "Sem nome",
+      name: user.username,
       status: "online"
     }));
 
