@@ -153,30 +153,18 @@ function showHomeScreen() {
   renderChatList(searchInput?.value || "");
 }
 
+// ✅ CORREÇÃO: Abre a tela ANTES de processar os contatos
 function openContactsScreen() {
-    console.log("Tentando abrir tela de contatos...");
-    // Pegamos os elementos na hora do clique para garantir que existam
-    const home = document.getElementById("home-screen");
-    const contacts = document.getElementById("contacts-screen");
-    const chat = document.getElementById("chat-screen");
+  console.log("Abrindo tela de contatos...");
+  if (homeScreen) homeScreen.classList.add("hidden");
+  if (chatScreen) chatScreen.classList.add("hidden");
+  if (contactsScreen) contactsScreen.classList.remove("hidden");
 
-    // Força a troca de classes CSS
-    if (home) home.classList.add("hidden");
-    if (chat) chat.classList.add("hidden");
-
-    if (contacts) {
-        contacts.classList.remove("hidden");
-        console.log("Tela de contatos aberta com sucesso!");
-    } else {
-        alert("Erro crítico: Tela de contatos não encontrada no HTML!");
-    }
-
-    // Tenta carregar os contatos, mas se falhar, a tela já abriu
-    try {
-        renderContacts();
-    } catch (e) {
-        console.error("Erro ao carregar lista de contatos:", e);
-    }
+  try {
+    renderContacts();
+  } catch(e) {
+    console.error("Erro ao renderizar contatos:", e);
+  }
 }
 
 function openChat(user) {
@@ -201,26 +189,24 @@ function openChat(user) {
   renderChatList(searchInput?.value || "");
 }
 
+// ===== RENDER CONTATOS (CORRIGIDO) =====
 function renderContacts() {
   if (!contactsList) return;
+
   contactsList.innerHTML = "";
 
-  console.log("Tentando renderizar contatos. Lista atual:", contacts);
-
-  // Filtro: garante que o contato tenha ID e Nome
+  // Filtra apenas contatos com nome e ID válidos
   const validContacts = contacts.filter(c => c && c.id && c.name);
 
-  console.log("Contatos válidos após filtro:", validContacts);
-
   if (validContacts.length === 0) {
-    contactsList.innerHTML = "<div style='padding:20px; text-align:center; color:#888;'>Nenhum usuário online no momento.</div>";
-    return;
+      contactsList.innerHTML = "<div style='padding:20px; text-align:center; color:#888;'>Ninguém online agora.</div>";
+      return;
   }
 
-  // Ordenação segura
+  // Ordenação Segura (Linha 184)
   const sorted = [...validContacts].sort((a, b) => {
-    const nameA = String(a.name || "");
-    const nameB = String(b.name || "");
+    const nameA = String(a?.name || "");
+    const nameB = String(b?.name || "");
     return nameA.localeCompare(nameB);
   });
 
@@ -242,7 +228,7 @@ function renderContacts() {
   });
 }
 
-// ===== RENDER CONVERSAS (CORRIGIDO) =====
+// ===== RENDER CONVERSAS =====
 function renderChatList(filter = "") {
   if (!chatList) return;
 
@@ -451,14 +437,53 @@ socket.on("receiveImage", (data) => {
   renderChatList(searchInput?.value || "");
 });
 
-// ===== ONLINE USERS (CORRIGIDO E ATUALIZADO) =====
-socket.on("updateOnlineUsers", (users) => {
-  console.log("Recebido do servidor:", users); // Log para depuração
+// ===== FEEDBACK =====
+socket.on("messageDelivered", (data) => {
+  console.log("✅ mensagem entregue:", data);
+});
 
+socket.on("imageDelivered", (data) => {
+  console.log("✅ imagem entregue:", data);
+});
+
+// ===== DIGITANDO =====
+function notifyTyping() {
+  if (!currentChatUser) return;
+
+  socket.emit("typing", {
+    to: currentChatUser.id
+  });
+}
+
+function stopTyping() {
+  if (!currentChatUser) return;
+
+  socket.emit("stopTyping", {
+    to: currentChatUser.id
+  });
+}
+
+socket.on("typing", (data) => {
+  if (!currentChatUser) return;
+  if (data.from !== currentChatUser.id) return;
+
+  if (typingIndicator) {
+    typingIndicator.innerText = `${data.username} está digitando...`;
+  }
+});
+
+socket.on("stopTyping", (data) => {
+  if (!currentChatUser) return;
+  if (data.from !== currentChatUser.id) return;
+
+  clearTypingIndicator();
+});
+
+// ✅ CORREÇÃO: Função Online Users completa e com renderContacts
+socket.on("updateOnlineUsers", (users) => {
+  console.log("Online Users:", users);
   onlineUsers = users || [];
 
-  // 1. Filtra para não mostrar você mesmo e garante que o usuário tenha nome
-  // Importante: use "user.username" ou "user.name" dependendo de como o seu servidor envia
   contacts = onlineUsers
     .filter(user => user && user.userId !== myUserId && (user.username || user.name))
     .map(user => ({
@@ -467,10 +492,8 @@ socket.on("updateOnlineUsers", (users) => {
       status: "online"
     }));
 
-  // 2. Salva no LocalStorage para persistência
   saveContacts();
 
-  // 3. Atualiza o status (online/offline) na lista de conversas existentes
   conversations = conversations.map(convo => {
     const online = onlineUsers.find(u => u.userId === convo.id);
     return {
@@ -480,14 +503,7 @@ socket.on("updateOnlineUsers", (users) => {
   });
 
   saveConversations();
-
-  // 4. ESSENCIAL: Chama as funções de desenho para atualizar a tela na hora!
-  renderContacts();
-  renderChatList(searchInput?.value || "");
-});
-
-  saveConversations();
-  renderContacts();
+  renderContacts(); // Atualiza a tela de contatos agora!
   renderChatList(searchInput?.value || "");
 
   if (currentChatUser && chatStatus) {
@@ -551,7 +567,9 @@ function logout() {
 sendBtn?.addEventListener("click", sendMessage);
 messageInput?.addEventListener("input", notifyTyping);
 imageInput?.addEventListener("change", sendImage);
-newChatBtn?.addEventListener("click", openContactsScreen);
+if (newChatBtn) {
+    newChatBtn.onclick = openContactsScreen;
+}
 
 // ===== INÍCIO =====
 renderChatList();
