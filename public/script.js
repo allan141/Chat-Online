@@ -81,7 +81,7 @@ function loadConversationMessages(userId) {
 }
 
 function getAvatarLetter(name) {
-  return name ? name.charAt(0).toUpperCase() : "?";
+  return name && name.length ? name.charAt(0).toUpperCase() : "?";
 }
 
 function ensureConversation(user) {
@@ -181,15 +181,19 @@ function openChat(user) {
 function renderContacts() {
   contactsList.innerHTML = "";
 
-  const sorted = [...contacts].sort((a, b) => a.name.localeCompare(b.name));
+  const sorted = [...contacts].sort((a, b) => {
+    const nameA = (a?.name || "").toString();
+    const nameB = (b?.name || "").toString();
+    return nameA.localeCompare(nameB);
+  });
 
   sorted.forEach(contact => {
     const item = document.createElement("div");
     item.className = "contact-item";
     item.innerHTML = `
-      <div class="contact-item-avatar">${getAvatarLetter(contact.name)}</div>
+      <div class="contact-item-avatar">${getAvatarLetter(contact.name || "?")}</div>
       <div class="contact-item-info">
-        <div class="contact-item-name">${contact.name}</div>
+        <div class="contact-item-name">${contact.name || "Sem nome"}</div>
         <div class="contact-item-status">${contact.status || "offline"}</div>
       </div>
     `;
@@ -453,10 +457,10 @@ socket.on("updateOnlineUsers", (users) => {
   onlineUsers = users;
 
   contacts = users
-    .filter(user => user.userId !== myUserId)
+    .filter(user => user.userId !== myUserId && user.username)
     .map(user => ({
       id: user.userId,
-      name: user.username,
+      name: user.username || "Sem nome",
       status: "online"
     }));
 
