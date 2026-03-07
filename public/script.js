@@ -154,10 +154,29 @@ function showHomeScreen() {
 }
 
 function openContactsScreen() {
-  homeScreen?.classList.add("hidden");
-  contactsScreen?.classList.remove("hidden");
-  chatScreen?.classList.add("hidden");
-  renderContacts();
+    console.log("Tentando abrir tela de contatos...");
+    // Pegamos os elementos na hora do clique para garantir que existam
+    const home = document.getElementById("home-screen");
+    const contacts = document.getElementById("contacts-screen");
+    const chat = document.getElementById("chat-screen");
+
+    // Força a troca de classes CSS
+    if (home) home.classList.add("hidden");
+    if (chat) chat.classList.add("hidden");
+
+    if (contacts) {
+        contacts.classList.remove("hidden");
+        console.log("Tela de contatos aberta com sucesso!");
+    } else {
+        alert("Erro crítico: Tela de contatos não encontrada no HTML!");
+    }
+
+    // Tenta carregar os contatos, mas se falhar, a tela já abriu
+    try {
+        renderContacts();
+    } catch (e) {
+        console.error("Erro ao carregar lista de contatos:", e);
+    }
 }
 
 function openChat(user) {

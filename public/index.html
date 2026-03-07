@@ -6,8 +6,10 @@
     <title>Chat Online</title>
     <link rel="stylesheet" href="style.css">
 
-    <!-- Socket.IO via CDN para funcionar no APK -->
+    <!-- Socket.IO via CDN -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <!-- O script.js deve vir depois do Socket.io -->
     <script defer src="script.js"></script>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -16,7 +18,7 @@
 <div class="app-container">
 
     <!-- TELA INICIAL / LISTA DE CONVERSAS -->
-    <div id="home-screen" class="screen active">
+    <div id="home-screen" class="screen">
         <div class="home-header">
             <div class="home-title">Chat Online</div>
 
@@ -46,7 +48,8 @@
             <!-- Lista de conversas será criada pelo script.js -->
         </div>
 
-        <button id="new-chat-btn" class="new-chat-btn" title="Nova conversa">
+        <!-- CORREÇÃO: Adicionado onclick para abrir a tela de contatos -->
+        <button id="new-chat-btn" class="new-chat-btn" title="Nova conversa" onclick="openContactsScreen()">
             <i class="fa-solid fa-pen"></i>
         </button>
     </div>
