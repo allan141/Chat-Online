@@ -201,19 +201,26 @@ function openChat(user) {
   renderChatList(searchInput?.value || "");
 }
 
-// ===== RENDER CONTATOS (CORRIGIDO) =====
 function renderContacts() {
   if (!contactsList) return;
-
   contactsList.innerHTML = "";
 
-  // Filtra apenas contatos válidos que possuem ID e Nome
-  const validContacts = contacts.filter(contact => contact && contact.id && contact.name);
+  console.log("Tentando renderizar contatos. Lista atual:", contacts);
 
-  // Ordenação com verificação de segurança (Linha 184 corrigida)
+  // Filtro: garante que o contato tenha ID e Nome
+  const validContacts = contacts.filter(c => c && c.id && c.name);
+
+  console.log("Contatos válidos após filtro:", validContacts);
+
+  if (validContacts.length === 0) {
+    contactsList.innerHTML = "<div style='padding:20px; text-align:center; color:#888;'>Nenhum usuário online no momento.</div>";
+    return;
+  }
+
+  // Ordenação segura
   const sorted = [...validContacts].sort((a, b) => {
-    const nameA = String(a?.name || "");
-    const nameB = String(b?.name || "");
+    const nameA = String(a.name || "");
+    const nameB = String(b.name || "");
     return nameA.localeCompare(nameB);
   });
 
@@ -224,7 +231,7 @@ function renderContacts() {
       <div class="contact-item-avatar">${getAvatarLetter(contact.name)}</div>
       <div class="contact-item-info">
         <div class="contact-item-name">${contact.name}</div>
-        <div class="contact-item-status">${contact.status || "offline"}</div>
+        <div class="contact-item-status">${contact.status || "online"}</div>
       </div>
     `;
     item.onclick = () => {
@@ -444,21 +451,26 @@ socket.on("receiveImage", (data) => {
   renderChatList(searchInput?.value || "");
 });
 
-// ===== ONLINE USERS (CORRIGIDO) =====
+// ===== ONLINE USERS (CORRIGIDO E ATUALIZADO) =====
 socket.on("updateOnlineUsers", (users) => {
+  console.log("Recebido do servidor:", users); // Log para depuração
+
   onlineUsers = users || [];
 
-  // Filtra apenas usuários que têm nome definido
+  // 1. Filtra para não mostrar você mesmo e garante que o usuário tenha nome
+  // Importante: use "user.username" ou "user.name" dependendo de como o seu servidor envia
   contacts = onlineUsers
-    .filter(user => user && user.userId !== myUserId && user.username)
+    .filter(user => user && user.userId !== myUserId && (user.username || user.name))
     .map(user => ({
       id: user.userId,
-      name: user.username,
+      name: user.username || user.name || "Sem nome",
       status: "online"
     }));
 
+  // 2. Salva no LocalStorage para persistência
   saveContacts();
 
+  // 3. Atualiza o status (online/offline) na lista de conversas existentes
   conversations = conversations.map(convo => {
     const online = onlineUsers.find(u => u.userId === convo.id);
     return {
@@ -466,6 +478,13 @@ socket.on("updateOnlineUsers", (users) => {
       status: online ? "online" : "offline"
     };
   });
+
+  saveConversations();
+
+  // 4. ESSENCIAL: Chama as funções de desenho para atualizar a tela na hora!
+  renderContacts();
+  renderChatList(searchInput?.value || "");
+});
 
   saveConversations();
   renderContacts();
