@@ -5,16 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Online</title>
     <link rel="stylesheet" href="style.css">
+
     <!-- Socket.IO via CDN para funcionar no APK -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script defer src="script.js"></script>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div class="chat-container">
-        <!-- Cabeçalho -->
-        <div class="chat-header">
-            Chat Online
+<div class="app-container">
+
+    <!-- TELA INICIAL / LISTA DE CONVERSAS -->
+    <div id="home-screen" class="screen active">
+        <div class="home-header">
+            <div class="home-title">Chat Online</div>
+
             <div class="menu-icon" onclick="toggleMenu()">
                 <i class="fa-solid fa-ellipsis-vertical"></i>
             </div>
@@ -23,34 +28,89 @@
             <div id="menu-dropdown" class="menu-dropdown">
                 <ul>
                     <li onclick="logout()">
-                        <i class="fa-solid fa-right-from-bracket"></i> Sair do Chat
+                        <i class="fa-solid fa-right-from-bracket"></i> Sair
                     </li>
                     <li onclick="clearChat()">
-                        <i class="fa-solid fa-trash"></i> Apagar Conversa
+                        <i class="fa-solid fa-trash"></i> Apagar Conversas
                     </li>
                 </ul>
+            </div>
+        </div>
+
+        <div class="search-container">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="search-input" placeholder="Buscar conversa">
+        </div>
+
+        <div id="chat-list" class="chat-list">
+            <!-- Lista de conversas será criada pelo script.js -->
+        </div>
+
+        <button class="new-chat-btn" onclick="openContactsScreen()" title="Nova conversa">
+            <i class="fa-solid fa-pen"></i>
+        </button>
+    </div>
+
+    <!-- TELA DE CONTATOS -->
+    <div id="contacts-screen" class="screen hidden">
+        <div class="contacts-header">
+            <button class="back-btn" onclick="showHomeScreen()">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <div class="contacts-title">Contatos</div>
+        </div>
+
+        <div id="contacts-list" class="contacts-list">
+            <!-- Contatos serão renderizados pelo script.js -->
+        </div>
+    </div>
+
+    <!-- TELA DE CHAT -->
+    <div id="chat-screen" class="screen hidden">
+        <div class="chat-header">
+            <button class="back-btn" onclick="showHomeScreen()">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+
+            <div class="chat-user-info">
+                <div class="chat-avatar" id="chat-avatar">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+
+                <div class="chat-user-text">
+                    <div id="chat-title">Usuário</div>
+                    <div id="chat-status">online</div>
+                </div>
+            </div>
+
+            <div class="chat-top-actions">
+                <i class="fa-solid fa-phone"></i>
+                <i class="fa-solid fa-video"></i>
             </div>
         </div>
 
         <!-- Caixa de mensagens -->
         <div id="chat-box"></div>
 
-        <!-- Indicador de "Digitando..." -->
+        <!-- Indicador de digitando -->
         <div id="typing-indicator"></div>
 
-        <!-- Entrada de mensagem e botões -->
+        <!-- Entrada de mensagem -->
         <div class="input-container">
             <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="sendImage(event)" />
+
             <button id="attach-btn" onclick="document.getElementById('imageInput').click()" title="Anexar imagem">
                 <i class="fa-solid fa-paperclip"></i>
             </button>
 
-            <input type="text" id="message" placeholder="Digite uma mensagem..." oninput="notifyTyping()" onblur="stopTyping()" />
+            <input type="text" id="message" placeholder="Mensagem" oninput="notifyTyping()" onblur="stopTyping()" />
 
             <button id="send-btn" onclick="sendMessage()" title="Enviar mensagem">
                 <i class="fa-solid fa-paper-plane"></i>
             </button>
         </div>
     </div>
+
+</div>
 </body>
 </html>
