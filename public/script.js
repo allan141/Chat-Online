@@ -27,7 +27,7 @@ if (!username) {
   }
 }
 
-const myUserId = username.toLowerCase().replace(/\s+/g, "_");
+const myUserId = username ? username.toLowerCase().replace(/\s+/g, "_") : "";
 
 if (username) {
   socket.emit("registerUser", username);
@@ -50,6 +50,7 @@ const imageInput = document.getElementById("imageInput");
 const chatTitle = document.getElementById("chat-title");
 const chatStatus = document.getElementById("chat-status");
 const searchInput = document.getElementById("search-input");
+const newChatBtn = document.getElementById("new-chat-btn");
 
 // ===== ESTADO =====
 let currentChatUser = null;
@@ -85,11 +86,13 @@ function getAvatarLetter(name) {
 }
 
 function ensureConversation(user) {
+  if (!user || !user.id) return;
+
   const exists = conversations.find(c => c.id === user.id);
   if (!exists) {
     conversations.unshift({
       id: user.id,
-      name: user.name,
+      name: user.name || "Sem nome",
       lastMessage: "",
       time: "",
       unread: 0,
@@ -113,7 +116,7 @@ function updateConversationPreview(userId, text) {
     if (contact) {
       conversations.unshift({
         id: contact.id,
-        name: contact.name,
+        name: contact.name || "Sem nome",
         lastMessage: text,
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
@@ -143,29 +146,31 @@ function clearTypingIndicator() {
 
 // ===== TELAS =====
 function showHomeScreen() {
-  homeScreen.classList.remove("hidden");
-  contactsScreen.classList.add("hidden");
-  chatScreen.classList.add("hidden");
+  homeScreen?.classList.remove("hidden");
+  contactsScreen?.classList.add("hidden");
+  chatScreen?.classList.add("hidden");
   clearTypingIndicator();
   renderChatList(searchInput?.value || "");
 }
 
 function openContactsScreen() {
-  homeScreen.classList.add("hidden");
-  contactsScreen.classList.remove("hidden");
-  chatScreen.classList.add("hidden");
+  homeScreen?.classList.add("hidden");
+  contactsScreen?.classList.remove("hidden");
+  chatScreen?.classList.add("hidden");
   renderContacts();
 }
 
 function openChat(user) {
+  if (!user) return;
+
   currentChatUser = user;
 
-  homeScreen.classList.add("hidden");
-  contactsScreen.classList.add("hidden");
-  chatScreen.classList.remove("hidden");
+  homeScreen?.classList.add("hidden");
+  contactsScreen?.classList.add("hidden");
+  chatScreen?.classList.remove("hidden");
 
-  chatTitle.textContent = user.name;
-  chatStatus.textContent = user.status || "offline";
+  if (chatTitle) chatTitle.textContent = user.name || "Sem nome";
+  if (chatStatus) chatStatus.textContent = user.status || "offline";
 
   const conversation = conversations.find(c => c.id === user.id);
   if (conversation) {
@@ -179,9 +184,13 @@ function openChat(user) {
 
 // ===== RENDER CONTATOS =====
 function renderContacts() {
+  if (!contactsList) return;
+
   contactsList.innerHTML = "";
 
-  const sorted = [...contacts].sort((a, b) => {
+  const validContacts = contacts.filter(contact => contact && contact.id);
+
+  const sorted = [...validContacts].sort((a, b) => {
     const nameA = (a?.name || "").toString();
     const nameB = (b?.name || "").toString();
     return nameA.localeCompare(nameB);
@@ -207,20 +216,22 @@ function renderContacts() {
 
 // ===== RENDER CONVERSAS =====
 function renderChatList(filter = "") {
+  if (!chatList) return;
+
   chatList.innerHTML = "";
 
   const filtered = conversations.filter(c =>
-    c.name.toLowerCase().includes(filter.toLowerCase())
+    (c.name || "").toLowerCase().includes(filter.toLowerCase())
   );
 
   filtered.forEach(chat => {
     const item = document.createElement("div");
     item.className = "chat-item";
     item.innerHTML = `
-      <div class="chat-item-avatar">${getAvatarLetter(chat.name)}</div>
+      <div class="chat-item-avatar">${getAvatarLetter(chat.name || "?")}</div>
       <div class="chat-item-content">
         <div class="chat-item-top">
-          <div class="chat-item-name">${chat.name}</div>
+          <div class="chat-item-name">${chat.name || "Sem nome"}</div>
           <div class="chat-item-time">${chat.time || ""}</div>
         </div>
         <div class="chat-item-bottom">
@@ -243,7 +254,7 @@ if (searchInput) {
 
 // ===== HISTÓRICO =====
 function loadChatHistory() {
-  if (!currentChatUser) return;
+  if (!currentChatUser || !chatBox) return;
 
   const messages = loadConversationMessages(currentChatUser.id);
   chatBox.innerHTML = "";
@@ -260,7 +271,7 @@ function loadChatHistory() {
 
 // ===== ENVIAR TEXTO =====
 function sendMessage() {
-  const message = messageInput.value.trim();
+  const message = messageInput?.value.trim();
 
   if (!message || !username || !currentChatUser) return;
 
@@ -291,7 +302,7 @@ function sendMessage() {
     to: currentChatUser.id
   });
 
-  messageInput.value = "";
+  if (messageInput) messageInput.value = "";
   stopTyping();
 }
 
@@ -336,15 +347,15 @@ function sendImage(event) {
 
 // ===== RECEBER TEXTO =====
 socket.on("chatMessage", (data) => {
-  const senderId = data.from || data.username.toLowerCase().replace(/\s+/g, "_");
+  const senderId = data.from || (data.username || "").toLowerCase().replace(/\s+/g, "_");
 
-  if (senderId === myUserId) return;
+  if (!senderId || senderId === myUserId) return;
 
   let contact = contacts.find(c => c.id === senderId);
   if (!contact) {
     contact = {
       id: senderId,
-      name: data.fromName || data.username,
+      name: data.fromName || data.username || "Sem nome",
       status: "online"
     };
     contacts.push(contact);
@@ -362,7 +373,7 @@ socket.on("chatMessage", (data) => {
   messages.push(messageData);
   saveConversationMessages(senderId, messages);
 
-  updateConversationPreview(senderId, data.message);
+  updateConversationPreview(senderId, data.message || "");
 
   if (!currentChatUser || currentChatUser.id !== senderId) {
     markConversationUnread(senderId);
@@ -375,15 +386,15 @@ socket.on("chatMessage", (data) => {
 
 // ===== RECEBER IMAGEM =====
 socket.on("receiveImage", (data) => {
-  const senderId = data.from || data.username.toLowerCase().replace(/\s+/g, "_");
+  const senderId = data.from || (data.username || "").toLowerCase().replace(/\s+/g, "_");
 
-  if (senderId === myUserId) return;
+  if (!senderId || senderId === myUserId) return;
 
   let contact = contacts.find(c => c.id === senderId);
   if (!contact) {
     contact = {
       id: senderId,
-      name: data.fromName || data.username,
+      name: data.fromName || data.username || "Sem nome",
       status: "online"
     };
     contacts.push(contact);
@@ -412,7 +423,7 @@ socket.on("receiveImage", (data) => {
   renderChatList(searchInput?.value || "");
 });
 
-// ===== FEEDBACK DE ENTREGA =====
+// ===== FEEDBACK =====
 socket.on("messageDelivered", (data) => {
   console.log("✅ mensagem entregue:", data);
 });
@@ -442,7 +453,9 @@ socket.on("typing", (data) => {
   if (!currentChatUser) return;
   if (data.from !== currentChatUser.id) return;
 
-  typingIndicator.innerText = `${data.username} está digitando...`;
+  if (typingIndicator) {
+    typingIndicator.innerText = `${data.username} está digitando...`;
+  }
 });
 
 socket.on("stopTyping", (data) => {
@@ -454,10 +467,10 @@ socket.on("stopTyping", (data) => {
 
 // ===== ONLINE USERS =====
 socket.on("updateOnlineUsers", (users) => {
-  onlineUsers = users;
+  onlineUsers = users || [];
 
-  contacts = users
-    .filter(user => user.userId !== myUserId && user.username)
+  contacts = onlineUsers
+    .filter(user => user && user.userId !== myUserId && user.username)
     .map(user => ({
       id: user.userId,
       name: user.username || "Sem nome",
@@ -466,9 +479,8 @@ socket.on("updateOnlineUsers", (users) => {
 
   saveContacts();
 
-  // atualiza status nas conversas existentes
   conversations = conversations.map(convo => {
-    const online = users.find(u => u.userId === convo.id);
+    const online = onlineUsers.find(u => u.userId === convo.id);
     return {
       ...convo,
       status: online ? "online" : "offline"
@@ -479,32 +491,36 @@ socket.on("updateOnlineUsers", (users) => {
   renderContacts();
   renderChatList(searchInput?.value || "");
 
-  if (currentChatUser) {
-    const online = users.find(u => u.userId === currentChatUser.id);
+  if (currentChatUser && chatStatus) {
+    const online = onlineUsers.find(u => u.userId === currentChatUser.id);
     chatStatus.textContent = online ? "online" : "offline";
   }
 });
 
 // ===== RENDER MENSAGENS =====
 function displayMessage(data, isSender) {
+  if (!chatBox) return;
+
   const messageElement = document.createElement("div");
   messageElement.classList.add("message", isSender ? "sent" : "received");
   messageElement.innerHTML = `
-    <span class="username">${data.username}</span>
-    <p>${data.message}</p>
-    <span class="time">${data.time}</span>
+    <span class="username">${data.username || "Sem nome"}</span>
+    <p>${data.message || ""}</p>
+    <span class="time">${data.time || ""}</span>
   `;
   chatBox.appendChild(messageElement);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 function displayImage(data, isSender) {
+  if (!chatBox) return;
+
   const imageElement = document.createElement("div");
   imageElement.classList.add("message", isSender ? "sent" : "received");
   imageElement.innerHTML = `
-    <span class="username">${data.username}</span>
+    <span class="username">${data.username || "Sem nome"}</span>
     <img src="${data.image}" class="chat-image" />
-    <span class="time">${data.time}</span>
+    <span class="time">${data.time || ""}</span>
   `;
   chatBox.appendChild(imageElement);
   chatBox.scrollTop = chatBox.scrollHeight;
@@ -527,26 +543,23 @@ function toggleMenu() {
 
 function logout() {
   localStorage.removeItem("username");
+  localStorage.removeItem("contacts");
+  localStorage.removeItem("conversations");
   location.reload();
 }
 
 // ===== EVENTOS =====
-// ===== EVENTOS =====
-const newChatBtn = document.getElementById("new-chat-btn");
-
 sendBtn?.addEventListener("click", sendMessage);
 messageInput?.addEventListener("input", notifyTyping);
 imageInput?.addEventListener("change", sendImage);
-newChatBtn?.addEventListener("click", () => {
-  openContactsScreen();
-});
+newChatBtn?.addEventListener("click", openContactsScreen);
 
 // ===== INÍCIO =====
 renderChatList();
 renderContacts();
 showHomeScreen();
 
-
+// ===== EXPOR FUNÇÕES PARA HTML =====
 window.openContactsScreen = openContactsScreen;
 window.showHomeScreen = showHomeScreen;
 window.toggleMenu = toggleMenu;
