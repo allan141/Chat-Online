@@ -527,11 +527,28 @@ function logout() {
 }
 
 // ===== EVENTOS =====
+// ===== EVENTOS =====
+const newChatBtn = document.getElementById("new-chat-btn");
+
 sendBtn?.addEventListener("click", sendMessage);
 messageInput?.addEventListener("input", notifyTyping);
 imageInput?.addEventListener("change", sendImage);
+newChatBtn?.addEventListener("click", () => {
+  openContactsScreen();
+});
 
 // ===== INÍCIO =====
 renderChatList();
 renderContacts();
 showHomeScreen();
+
+
+window.openContactsScreen = openContactsScreen;
+window.showHomeScreen = showHomeScreen;
+window.toggleMenu = toggleMenu;
+window.logout = logout;
+window.clearChat = clearChat;
+window.sendMessage = sendMessage;
+window.sendImage = sendImage;
+window.notifyTyping = notifyTyping;
+window.stopTyping = stopTyping;
